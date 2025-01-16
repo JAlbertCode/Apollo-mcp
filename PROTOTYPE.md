@@ -1,8 +1,25 @@
-# Apollo-mcp
+# Apollo-mcp Prototype Development
 
 An MCP server implementation for Apollo.io integration, enabling AI assistants to interact with Apollo's sales intelligence platform through the Model Context Protocol.
 
-## Development Checklist
+## Implementation Roadmap
+
+The implementation is divided into multiple phases to ensure a solid foundation while allowing for incremental improvements.
+
+### Phase 1 (Current) - Core Implementation (MVP)
+- Basic TypeScript project setup with MCP SDK
+- Simple Apollo API client with core endpoints
+- Minimal resource schemas for people and organizations
+- Basic error handling for API failures
+- Simple environment configuration
+- Basic unit tests for core functionality
+
+### Future Phases
+- Phase 2: Enhanced Reliability (rate limiting, caching, retry logic)
+- Phase 3: Production Readiness (monitoring, security, deployment)
+- Phase 4: Scale and Observability (distributed features, metrics)
+
+## Phase 1 Development Checklist
 
 ### Project Setup
 - [ ] Initialize TypeScript project
@@ -47,6 +64,58 @@ An MCP server implementation for Apollo.io integration, enabling AI assistants t
   - [ ] Transport errors
   - [ ] Apollo API errors
 
+### Input Validation
+- [ ] Create validation utilities
+  ```typescript
+  interface EnrichPersonInput {
+    email?: string;
+    domain?: string;
+  }
+
+  const validateEnrichPersonInput = (input: EnrichPersonInput): boolean => {
+    return Boolean(input.email || input.domain);
+  };
+
+  interface SearchPeopleInput {
+    q?: string;
+    person_titles?: string[];
+    organization_domains?: string[];
+  }
+
+  const validateSearchPeopleInput = (input: SearchPeopleInput): boolean => {
+    return Boolean(input.q || input.person_titles?.length || input.organization_domains?.length);
+  };
+  ```
+
+### Response Transformation
+- [ ] Create transformation utilities
+  ```typescript
+  interface MCPPersonResource {
+    uri: string;
+    data: {
+      first_name: string;
+      last_name: string;
+      email: string;
+      title: string;
+      organization: string;
+      // Only include essential fields for Phase 1
+    }
+  }
+
+  const transformApolloResponse = (response: ApolloResponse): MCPPersonResource => {
+    return {
+      uri: `apollo://people/${response.id}`,
+      data: {
+        first_name: response.first_name,
+        last_name: response.last_name,
+        email: response.email,
+        title: response.title,
+        organization: response.organization?.name
+      }
+    };
+  };
+  ```
+
 ### Apollo API Client
 - [ ] Create API wrapper class
   ```typescript
@@ -72,7 +141,26 @@ An MCP server implementation for Apollo.io integration, enabling AI assistants t
   }
   ```
 
-### Resources Implementation
+### Configuration Management
+- [ ] Create configuration types
+  ```typescript
+  interface ServerConfig {
+    apolloApiKey: string;
+    baseUrl: string;
+  }
+  
+  const loadConfig = (): ServerConfig => {
+    if (!process.env.APOLLO_API_KEY) {
+      throw new Error('APOLLO_API_KEY is required');
+    }
+    return {
+      apolloApiKey: process.env.APOLLO_API_KEY,
+      baseUrl: process.env.APOLLO_BASE_URL || 'https://api.apollo.io/v1'
+    };
+  };
+  ```
+
+### Resources Implementation (Phase 1 Core / Phase 2 Caching)
 - [ ] Define resource schemas aligned with Apollo data models
   ```typescript
   interface PersonResource {
@@ -168,15 +256,11 @@ An MCP server implementation for Apollo.io integration, enabling AI assistants t
   }
   ```
 
-### Rate Limiting & Security
+### Rate Limiting & Security (Phase 2)
 - [ ] Implement rate limiting
   - [ ] Track API usage
   - [ ] Cache responses
   - [ ] Queue requests
-- [ ] Add security measures
-  - [ ] API key validation
-  - [ ] Request validation
-  - [ ] Error handling
   ```typescript
   class RateLimiter {
     private requests: number = 0;
@@ -189,8 +273,19 @@ An MCP server implementation for Apollo.io integration, enabling AI assistants t
   }
   ```
 
+### Basic Security (Phase 1)
+- [ ] Add security measures
+  - [ ] API key validation
+  - [ ] Basic request validation
+  ```typescript
+  const validateApiKey = (apiKey: string): boolean => {
+    return Boolean(apiKey && apiKey.length > 0);
+  };
+  ```
+
 ### Testing
-- [ ] Set up test framework
+#### Phase 1 - Core Testing
+- [ ] Set up basic test framework
   ```bash
   npm install -D jest @types/jest ts-jest
   ```
@@ -200,15 +295,20 @@ An MCP server implementation for Apollo.io integration, enabling AI assistants t
   const mockEnrichPersonResponse = {
     first_name: "John",
     last_name: "Doe",
-    email: "john@example.com",
-    // ...
+    email: "john@example.com"
   };
   ```
-- [ ] Write tests
+- [ ] Write core tests
   - [ ] API wrapper tests
-  - [ ] Rate limiter tests
-  - [ ] Tool implementation tests
-  - [ ] Resource handler tests
+  - [ ] Basic resource handler tests
+
+#### Phase 2/3 - Advanced Testing
+- [ ] Performance testing
+- [ ] Load testing
+- [ ] Rate limiting tests
+- [ ] Cache behavior tests
+- [ ] Error recovery tests
+- [ ] Security testing
 
 ### Building & Packaging
 - [ ] Configure build process
@@ -293,15 +393,31 @@ Here are some example queries you can use with Claude once the server is connect
 
 ## Error Handling
 
-The server implements comprehensive error handling for common scenarios:
+Phase 1 implements basic error handling for critical scenarios:
 
-- Rate limiting exceeded
+```typescript
+type ApolloError = {
+  code: string;
+  message: string;
+  status: number;
+}
+
+const handleError = (error: ApolloError) => {
+  return new MCPError({
+    code: error.code,
+    message: error.message,
+    details: { status: error.status }
+  });
+};
+```
+
+Handled scenarios:
 - Invalid API key
 - Network errors
-- Invalid input data
+- Basic input validation
 - Apollo API errors
 
-Each error is properly mapped to appropriate MCP protocol errors and includes helpful error messages.
+More comprehensive error handling will be implemented in later phases.
 
 ## Contributing
 
